@@ -1,18 +1,24 @@
-
 const express = require('express');
-const app = express();
-const port = 3000;
+const { createServer } = require('node:http');
+const { Server } = require('socket.io');
 
-// frontend folder
+const app = express();
+const server = createServer(app);
+const io = new Server(server);
+
 app.use(express.static('../frontend'));
 
+
 app.get('/', (req, res) => {
-    res.send('Hello World!');
+  res.send('<h1>Hello world</h1>');
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+io.on('connection',(socket)=>{
+    console.log('user connected')
 });
 
+server.listen(3000, () => {
+  console.log('server running at http://localhost:3000');
+});
 
 // will remove nodemon from dep

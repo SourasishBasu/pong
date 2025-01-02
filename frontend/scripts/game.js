@@ -3,6 +3,11 @@ class PongScene extends Phaser.Scene {
         super({ key: 'PongScene' });
     }
 
+    init() {
+        var urlParams = new URLSearchParams(window.location.search);
+        this.mode = urlParams.get('mode');
+    }
+
     preload() {
         this.load.image('background', 'assets/images/background.jpg');
         this.load.spritesheet('ball', 'assets/images/ball.png', {
@@ -15,12 +20,10 @@ class PongScene extends Phaser.Scene {
     }
 
     create() {
+
         // Adding background
         const background = this.add.image(400, 300, 'background');
         background.setDisplaySize(800, 600);
-
-        // Adding inputs
-        this.cursors = this.input.keyboard.createCursorKeys();
 
         // Adding ball
         this.ball = this.physics.add.sprite(400, 300, 'ball');
@@ -82,29 +85,83 @@ class PongScene extends Phaser.Scene {
             fill: '#FFFFFF',
             fontFamily: 'Arial'
         }).setOrigin(0.5, 0.5);
+
+        // Set up controls based on mode
+        switch (this.mode) {
+            case 'ai':
+                this.setupSinglePlayer();
+                break;
+            case 'local':
+                this.setupLocalMultiplayer();
+                break;
+            case 'multiplayer':
+                this.setupOnlineMultiplayer();
+                break;
+            default:
+                this.setupSinglePlayer();
+                break;
+        }
     }
 
     update() {
         this.ball.rotation += 0.05;
 
-        // Left paddle controls
-        if (this.cursors.up.isDown) {
-            this.leftPaddle.setVelocityY(-300);
-        } else if (this.cursors.down.isDown) {
-            this.leftPaddle.setVelocityY(300);
-        } else {
-            this.leftPaddle.setVelocityY(0);
-        }
+        if (this.mode === 'ai') {
+            // Left paddle controls
+            if (this.cursors.up.isDown) {
+                this.leftPaddle.setVelocityY(-300);
+            } else if (this.cursors.down.isDown) {
+                this.leftPaddle.setVelocityY(300);
+            } else {
+                this.leftPaddle.setVelocityY(0);
+            }
 
-    // Simple AI for the right paddle
-    if (this.ball.y > this.rightPaddle.y) {
-        this.rightPaddle.setVelocityY(200);
-    } else if (this.ball.y < this.rightPaddle.y) {
-        this.rightPaddle.setVelocityY(-200);
-    } else {
-        this.rightPaddle.setVelocityY(0);
+            // AI for right paddle
+            if (this.ball.y > this.rightPaddle.y) {
+                this.rightPaddle.setVelocityY(200);
+            } else if (this.ball.y < this.rightPaddle.y) {
+                this.rightPaddle.setVelocityY(-200);
+            } else {
+                this.rightPaddle.setVelocityY(0);
+            }
+        } else if (this.mode === 'local') {
+            // Left paddle (W/S keys)
+            if (this.leftCursors.W.isDown) {
+                this.leftPaddle.setVelocityY(-300);
+            } else if (this.leftCursors.S.isDown) {
+                this.leftPaddle.setVelocityY(300);
+            } else {
+                this.leftPaddle.setVelocityY(0);
+            }
+
+            // Right paddle (UP/DOWN keys)
+            if (this.rightCursors.UP.isDown) {
+                this.rightPaddle.setVelocityY(-300);
+            } else if (this.rightCursors.DOWN.isDown) {
+                this.rightPaddle.setVelocityY(300);
+            } else {
+                this.rightPaddle.setVelocityY(0);
+            }
+        }
     }
+
+    setupSinglePlayer() {
+        this.cursors = this.input.keyboard.createCursorKeys();
     }
+    
+    setupLocalMultiplayer() {
+        this.leftCursors = this.input.keyboard.addKeys('W,S');
+        this.rightCursors = this.input.keyboard.addKeys('UP,DOWN');
+    }
+    
+    setupOnlineMultiplayer() {
+        this.add.text(400, 300, 'Online Multiplayer Not Implemented Yet', {
+            fontSize: '32px',
+            fill: '#FFF'
+        }).setOrigin(0.5, 0.5);
+    }
+
+
 
     scoreGoal(player) {
         if (player === 'left') {
@@ -124,6 +181,7 @@ class PongScene extends Phaser.Scene {
         this.ball.setPosition(400, 300);
         this.ball.setVelocity(200 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
     }
+
 
     gameOver(winner) {
         // Stop the ball
