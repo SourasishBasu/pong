@@ -95,7 +95,8 @@ class PongScene extends Phaser.Scene {
                 this.setupLocalMultiplayer();
                 break;
             case 'multiplayer':
-                this.setupOnlineMultiplayer();
+                this.socket = io();
+                this.showMultiplayerMenu();
                 break;
             default:
                 this.setupSinglePlayer();
@@ -147,7 +148,37 @@ class PongScene extends Phaser.Scene {
         }
 
         else if (this.mode === 'multiplayer'){
-            
+            // Local input for left paddle (W/S keys)
+            if (this.role === 'left') {
+                // Local input for left paddle (W/S keys)
+                if (this.leftCursors.up.isDown) {
+                    this.leftPaddle.setVelocityY(-300);
+                } else if (this.leftCursors.down.isDown) {
+                    this.leftPaddle.setVelocityY(300);
+                } else {
+                    this.leftPaddle.setVelocityY(0);
+                }
+    
+                // Emit left paddle movement
+                if (this.leftPaddle.oldY !== this.leftPaddle.y) {
+                    this.socket.emit('paddleMove', { y: this.leftPaddle.y, player: 'left' });
+                    this.leftPaddle.oldY = this.leftPaddle.y;
+                }
+            } else if (this.role === 'right') {
+                if (this.rightCursors.up.isDown) {
+                    this.rightPaddle.setVelocityY(-300);
+                } else if (this.rightCursors.down.isDown) {
+                    this.rightPaddle.setVelocityY(300);
+                } else {
+                    this.rightPaddle.setVelocityY(0);
+                }
+    
+                // Emit right paddle movement
+                if (this.rightPaddle.oldY !== this.rightPaddle.y) {
+                    this.socket.emit('paddleMove', { y: this.rightPaddle.y, player: 'right' });
+                    this.rightPaddle.oldY = this.rightPaddle.y;
+                }
+            }
         }
     }
 
@@ -160,14 +191,75 @@ class PongScene extends Phaser.Scene {
         this.rightCursors = this.input.keyboard.addKeys('UP,DOWN');
     }
     
-    setupOnlineMultiplayer() {
-        this.add.text(400, 300, 'Online Multiplayer Not Implemented Yet', {
+    showMultiplayerMenu() {
+
+        // Create Room Button
+        const createRoomButton = this.add.text(400, 250, 'Create Room', {
             fontSize: '32px',
-            fill: '#FFF'
-        }).setOrigin(0.5, 0.5);
+            fill: '#FFFFFF',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5, 0.5).setInteractive();
+    
+        createRoomButton.on('pointerdown', () => {
+            this.socket.emit('createRoom');
+            this.role = 'left'; // Room creator is the left paddle
+            this.setupMultiplayerInput();
+        });
+    
+        // Join Room Button
+        const joinRoomButton = this.add.text(400, 350, 'Join Room', {
+            fontSize: '32px',
+            fill: '#FFFFFF',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5, 0.5).setInteractive();
+    
+        joinRoomButton.on('pointerdown', () => {
+            const roomCode = prompt('Enter Room Code:'); // Simple prompt for now
+            if (roomCode) {
+                this.socket.emit('joinRoom', roomCode);
+                this.role = 'right'; // Joiner is the right paddle
+                this.setupMultiplayerInput();
+            }
+        });
+    
+        this.socket.on('roomCreated', (roomCode) => {
+            this.add.text(400, 300, `Room Code: ${roomCode}`, {
+                fontSize: '24px',
+                fill: '#FFFFFF'
+            }).setOrigin(0.5, 0.5);
+            this.leftPaddle.setVisible(true); // Show left paddle for the creator
+        });
+    
+        this.socket.on('roomJoined', () => {
+            this.rightPaddle.setVisible(true); // Show right paddle for the joiner
+            this.startGame(); // Start the game
+        });
+    
+        this.socket.on('paddleUpdate', (data) => {
+            if (data.player === 'left') {
+                this.leftPaddle.y = data.y; // Update left paddle position
+            } else if (data.player === 'right') {
+                this.rightPaddle.y = data.y; // Update right paddle position
+            }
+        });
+    
+        this.socket.on('joinError', (message) => {
+            alert(message); // Show error message
+        });
+    
+        this.socket.on('playerDisconnected', () => {
+            alert('Opponent disconnected.'); // Handle disconnection
+        });
     }
 
-
+    setupMultiplayerInput() {
+        if (this.role === 'left') {
+            this.leftCursors = this.input.keyboard.createCursorKeys(); // Left player controls
+        } else if (this.role === 'right') {
+            this.rightCursors = this.input.keyboard.createCursorKeys(); // Right player controls
+        }
+    }
+    
 
     scoreGoal(player) {
         if (player === 'left') {
