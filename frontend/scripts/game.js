@@ -29,7 +29,7 @@ class PongScene extends Phaser.Scene {
         this.ball = this.physics.add.sprite(400, 300, 'ball');
         this.ball.setCollideWorldBounds(true);
         this.ball.setBounce(1, 1);
-        this.ball.setVelocity(200, 200);
+        this.ball.setVelocity(0, 0);
         this.ball.setDisplaySize(50, 50);
 
         // Create ball animation
@@ -124,7 +124,9 @@ class PongScene extends Phaser.Scene {
             } else {
                 this.rightPaddle.setVelocityY(0);
             }
-        } else if (this.mode === 'local') {
+        } 
+        
+        else if (this.mode === 'local') {
             // Left paddle (W/S keys)
             if (this.leftCursors.W.isDown) {
                 this.leftPaddle.setVelocityY(-300);
@@ -142,6 +144,10 @@ class PongScene extends Phaser.Scene {
             } else {
                 this.rightPaddle.setVelocityY(0);
             }
+        }
+
+        else if (this.mode === 'multiplayer'){
+            
         }
     }
 
