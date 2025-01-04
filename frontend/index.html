@@ -1,25 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pong Game</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
         }
-        button {
-            font-size: 24px;
-            padding: 20px 40px;
-            margin: 10px;
+        .container {
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .btn {
+            font-size: 1.2rem;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 25px;
             cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .btn-ai {
+            background-color: #4361ee;
+        }
+        .btn-local {
+            background-color: #3a0ca3;
+        }
+        .btn-online {
+            background-color: #7209b7;
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        .pong-animation {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #d80808;
+            border-radius: 50%;
+            animation: pong 4s infinite linear;
+        }
+        @keyframes pong {
+            0%, 100% {
+                top: 10%;
+                left: 0;
+            }
+            25% {
+                top: 90%;
+                left: 25%;
+            }
+            50% {
+                top: 10%;
+                left: 50%;
+            }
+            75% {
+                top: 90%;
+                left: 75%;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Pong Game</h1>
-    <a href="game.html?mode=ai"><button>VS AI</button></a>
-    <a href="game.html?mode=local"><button>2 Player</button></a>
-    <a href="game.html?mode=multiplayer"><button>1v1 Online</button></a>
+    <div class="pong-animation"></div>
+    <div class="container">
+        <h1>Pong Game</h1>
+        <div class="buttons">
+            <a href="game.html?mode=ai" class="btn btn-ai">VS AI</a>
+            <a href="game.html?mode=local" class="btn btn-local">2 Player</a>
+            <a href="game.html?mode=multiplayer" class="btn btn-online">1v1 Online</a>
+        </div>
+    </div>
 </body>
 </html>
