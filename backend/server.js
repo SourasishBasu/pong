@@ -8,8 +8,6 @@ const io = new Server(server);
 
 app.use(express.static('../frontend'));
 
-
-
 app.get('/', (req, res) => {
   res.send('<h1>Hello world</h1>');
 });
@@ -57,6 +55,47 @@ io.on('connection', (socket) => {
         socket.to(room).emit('paddleUpdate', data); // Broadcast to the other player
     }
   });
+
+  socket.on('ballUpdate', (data) => {
+    const room = Array.from(socket.rooms).find(room => room !== socket.id);
+    if (room) {
+        socket.to(room).emit('ballUpdate', data);
+    }
+});
+
+socket.on('scoreGoal', (player) => {
+  const roomCode = Array.from(socket.rooms).find(room => room !== socket.id);
+  if (roomCode) {
+      const roomData = activeRooms.get(roomCode);
+      if (roomData) {
+          if (player === 'left') {
+              roomData.scoreLeft = (roomData.scoreLeft || 0) + 1;
+          } else if (player === 'right') {
+              roomData.scoreRight = (roomData.scoreRight || 0) + 1;
+          }
+          io.to(roomCode).emit('scoreGoal', {
+              leftScore: roomData.scoreLeft || 0,
+              rightScore: roomData.scoreRight || 0,
+              scorer: player
+          });
+          console.log("goal scored by " + player);
+
+          // Check for game over
+          if (roomData.scoreLeft >= 5 || roomData.scoreRight >= 5) {
+              io.to(roomCode).emit('gameOver', player);
+              activeRooms.delete(roomCode); // Clean up room
+          }
+      }
+  }
+});
+
+  // New event for game-over synchronization
+  socket.on('gameOver', (winner) => {
+    const room = Array.from(socket.rooms).find(room => room !== socket.id); // Find the room
+    if (room) {
+        io.to(room).emit('gameOver', winner); // Broadcast game-over state to both players
+    }
+});
 
 });
 

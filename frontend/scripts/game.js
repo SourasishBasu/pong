@@ -29,7 +29,7 @@ class PongScene extends Phaser.Scene {
         this.ball = this.physics.add.sprite(400, 300, 'ball');
         this.ball.setCollideWorldBounds(true);
         this.ball.setBounce(1, 1);
-        this.ball.setVelocity(0, 0);
+        this.ball.setVelocity(200, 200);
         this.ball.setDisplaySize(50, 50);
 
         // Create ball animation
@@ -49,6 +49,7 @@ class PongScene extends Phaser.Scene {
         this.rightPaddle = this.physics.add.sprite(750, 300, 'paddle');
         this.rightPaddle.setImmovable(true);
         this.rightPaddle.setCollideWorldBounds(true);
+        this.aiTargetY = this.rightPaddle.y;
 
         this.leftPaddle.setDisplaySize(40, 150);
         this.rightPaddle.setDisplaySize(40, 150);
@@ -96,6 +97,7 @@ class PongScene extends Phaser.Scene {
                 break;
             case 'multiplayer':
                 this.socket = io();
+                this.ball.setVelocity(0, 0);
                 this.showMultiplayerMenu();
                 break;
             default:
@@ -119,7 +121,7 @@ class PongScene extends Phaser.Scene {
 
             // AI for right paddle
             if (this.ball.y > this.rightPaddle.y) {
-                this.rightPaddle.setVelocityY(200);
+                this.rightPaddle.setVelocityY(200*(this.ball.x > 200?1:0.5));
             } else if (this.ball.y < this.rightPaddle.y) {
                 this.rightPaddle.setVelocityY(-200);
             } else {
@@ -179,6 +181,18 @@ class PongScene extends Phaser.Scene {
                     this.rightPaddle.oldY = this.rightPaddle.y;
                 }
             }
+            if (this.role === 'left') {
+                if (this.ball.oldX !== this.ball.x || this.ball.oldY !== this.ball.y) {
+                    this.socket.emit('ballUpdate', {
+                        x: this.ball.x,
+                        y: this.ball.y,
+                        velocityX: this.ball.body.velocity.x,
+                        velocityY: this.ball.body.velocity.y
+                    });
+                    this.ball.oldX = this.ball.x;
+                    this.ball.oldY = this.ball.y;
+                }
+            }
         }
     }
 
@@ -192,7 +206,7 @@ class PongScene extends Phaser.Scene {
     }
     
     showMultiplayerMenu() {
-
+        
         // Create Room Button
         const createRoomButton = this.add.text(400, 250, 'Create Room', {
             fontSize: '32px',
@@ -223,15 +237,18 @@ class PongScene extends Phaser.Scene {
         });
     
         this.socket.on('roomCreated', (roomCode) => {
-            this.add.text(400, 300, `Room Code: ${roomCode}`, {
+            this.clearUI()
+            this.add.text(400, 250, `Room Code: ${roomCode}`, {
                 fontSize: '24px',
                 fill: '#FFFFFF'
             }).setOrigin(0.5, 0.5);
-            this.leftPaddle.setVisible(true); // Show left paddle for the creator
+            this.add.text(400, 350, `Waiting for player...`, {
+                fontSize: '24px',
+                fill: '#FFFFFF'
+            }).setOrigin(0.5, 0.5);
         });
     
         this.socket.on('roomJoined', () => {
-            this.rightPaddle.setVisible(true); // Show right paddle for the joiner
             this.startGame(); // Start the game
         });
     
@@ -242,14 +259,49 @@ class PongScene extends Phaser.Scene {
                 this.rightPaddle.y = data.y; // Update right paddle position
             }
         });
+
+        this.socket.on('ballUpdate', (data) => {
+            if (this.role === 'right') {  // Only update ball position for the client
+                this.ball.setPosition(data.x, data.y);
+                this.ball.setVelocity(data.velocityX, data.velocityY);
+            }
+        });
+
+        this.socket.on('scoreGoal', (data) => {
+            console.log('Received scoreGoal event:', data);
+            this.scoreLeft = data.leftScore;
+            this.scoreRight = data.rightScore;
+            this.scoreText.setText(`${this.scoreLeft} : ${this.scoreRight}`);
+            
+            if (this.scoreLeft >= 5 || this.scoreRight >= 5) {
+                this.gameOver(data.scorer);
+            }
+        });
+    
+        this.socket.on('gameOver', (winner) => {
+            // Stop the ball
+            this.ball.setVelocity(0, 0);
+
+            // Stop physics updates
+            this.physics.pause();
+    
+            // Display game over message
+            this.add.text(400, 300, `Game Over! ${winner === 'left' ? 'Left' : 'Right'} Player Wins!`, {
+                fontSize: '48px',
+                fill: '#FFFFFF',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5, 0.5);
+        });
     
         this.socket.on('joinError', (message) => {
             alert(message); // Show error message
         });
     
         this.socket.on('playerDisconnected', () => {
+            this.physics.pause();
             alert('Opponent disconnected.'); // Handle disconnection
         });
+
     }
 
     setupMultiplayerInput() {
@@ -262,35 +314,90 @@ class PongScene extends Phaser.Scene {
     
 
     scoreGoal(player) {
-        if (player === 'left') {
-            this.scoreLeft++;
-        } else if (player === 'right') {
-            this.scoreRight++;
+        // Only the host handles scoring logic
+        if (this.mode === 'multiplayer') {
+            if (this.role === 'left') {
+                if (player === 'left') {
+                    this.scoreLeft++;
+                } else if (player === 'right') {
+                    this.scoreRight++;
+                }
+                
+                this.socket.emit('scoreGoal', player);
+                
+                if (this.scoreLeft >= 5 || this.scoreRight >= 5) {
+                    this.gameOver(player);
+                    return;
+                }
+                
+                // Reset ball position and emit update
+                this.ball.setPosition(400, 300);
+                this.ball.setVelocity(200 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
+                this.socket.emit('ballUpdate', {
+                    x: this.ball.x,
+                    y: this.ball.y,
+                    velocityX: this.ball.body.velocity.x,
+                    velocityY: this.ball.body.velocity.y
+                });
+            }
+        } else {
+            // Non-multiplayer logic remains the same
+            if (player === 'left') {
+                this.scoreLeft++;
+            } else if (player === 'right') {
+                this.scoreRight++;
+            }
+            
+            if (this.scoreLeft >= 5 || this.scoreRight >= 5) {
+                this.gameOver(player);
+                return;
+            }
+            
+            this.ball.setPosition(400, 300);
+            this.ball.setVelocity(200 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
         }
-
+        
+        // Update score display for all cases
         this.scoreText.setText(`${this.scoreLeft} : ${this.scoreRight}`);
-
-        // Check for game over
-        if (this.scoreLeft >= 10 || this.scoreRight >= 10) {
-            this.gameOver(player);
-            return;
-        }
-
-        this.ball.setPosition(400, 300);
-        this.ball.setVelocity(200 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
     }
 
-
     gameOver(winner) {
-        // Stop the ball
+        // Stop the game physics
+        this.physics.pause();
         this.ball.setVelocity(0, 0);
 
+        // Display game over message
+        const gameOverText = this.add.text(400, 300, `Game Over! ${winner === 'left' ? 'Left' : 'Right'} Player Wins!`, {
+            fontSize: '48px',
+            fill: '#FFFFFF',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5, 0.5);
+
+        // In multiplayer mode, emit game over event
+        if (this.mode === 'multiplayer' && this.role === 'left') {
+            this.socket.emit('gameOver', winner);
+        }
+    }
+
+    startGame() {
+        this.clearUI();
+        this.ball.setVelocity(200, Phaser.Math.Between(-200, 200));
+    }
+
+    clearUI() {
+        // Remove all text objects except the score text
+        this.children.list
+            .filter(child => child instanceof Phaser.GameObjects.Text && child !== this.scoreText)
+            .forEach(child => child.destroy());
+    }
+
+    gameOver(winner) {
         // Stop physics updates
         this.physics.pause();
 
         // Display game over message
         this.add.text(400, 300, `Game Over! ${winner === 'left' ? 'Left' : 'Right'} Player Wins!`, {
-            fontSize: '48px',
+            fontSize: '48px', 
             fill: '#FFFFFF',
             fontFamily: 'Arial'
         }).setOrigin(0.5, 0.5);
