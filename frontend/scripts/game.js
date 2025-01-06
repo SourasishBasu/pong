@@ -332,7 +332,7 @@ class PongScene extends Phaser.Scene {
                 
                 // Reset ball position and emit update
                 this.ball.setPosition(400, 300);
-                this.ball.setVelocity(200 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
+                this.ball.setVelocity(300 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
                 this.socket.emit('ballUpdate', {
                     x: this.ball.x,
                     y: this.ball.y,
@@ -354,7 +354,7 @@ class PongScene extends Phaser.Scene {
             }
             
             this.ball.setPosition(400, 300);
-            this.ball.setVelocity(200 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
+            this.ball.setVelocity(300 * (player === 'left' ? 1 : -1), Phaser.Math.Between(-200, 200));
         }
         
         // Update score display for all cases
@@ -381,7 +381,7 @@ class PongScene extends Phaser.Scene {
 
     startGame() {
         this.clearUI();
-        this.ball.setVelocity(200, Phaser.Math.Between(-200, 200));
+        this.ball.setVelocity(300, Phaser.Math.Between(-200, 200));
     }
 
     clearUI() {
