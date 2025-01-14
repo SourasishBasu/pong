@@ -100,7 +100,7 @@ socket.on('scoreGoal', (player) => {
 });
 
 server.listen(8080, () => {
-  console.log('server running on http://localhost:8080');
+  console.log('server running at http://localhost:8080');
 });
 
 
